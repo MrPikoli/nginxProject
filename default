@@ -1,0 +1,190 @@
+#server {
+#	listen 80 default_server;
+#	listen [::]:80 default_server;
+
+#	root /var/www/html;
+#	index index.html index.htm index.nginx-debian.html;
+
+#	server_name _;
+#	location / {
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+#		try_files $uri $uri/ =404;
+#	}
+
+#}
+	
+
+#server with 81 port
+server {
+	listen 81; 
+
+	server_name localhost;
+
+	location /redblue {
+		root /var/www/html;
+		index back1.html;
+
+	}
+}
+
+#server with 83 port
+server {
+
+	listen 83; 
+        server_name localhost;
+
+        location /redblue {
+                root /var/www/html;
+		index back2.html;
+
+        }
+}
+
+log_format upstreamlog '$server_name to: $upstream_addr [$request]';
+
+
+#upstream
+upstream backend {
+	zone backend_server_zone 64k;
+	server 127.0.0.1:81;
+	server 127.0.0.1:83;
+
+}
+
+
+server {
+
+	root /var/www/html;
+	index index.html index.htm index.nginx-debian.html;
+    
+	access_log /var/log/nginx/access.log upstreamlog;
+
+	location / {
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+		try_files $uri $uri/ =404;
+	}
+
+
+	location  /html/ {
+        alias /var/www/html/;
+	default_type text/html;
+	index page1.html;
+	add_header Content-Type text/html;        
+    }
+
+#mp3
+	location /music {
+
+		alias /var/www/html/music/;
+		add_header Content-Disposition "attachment";	
+	}
+
+
+#redirect
+location /redirect {
+
+	return 301 https://habr.com/ru/articles/267721/;
+}
+
+
+#infophp
+location /apphp {
+
+	proxy_pass http://127.0.0.1:8081/phpinfo.php; 
+}
+
+#regex for jpg
+location ~* \.jpg$ {
+
+	image_filter rotate 180; 
+}
+
+
+#image.jpg
+location /image11/ {
+
+	alias /var/www/html/image11/;
+}
+
+	
+#image.png
+location /image2/ {
+
+	alias /var/www/html/image2/;
+}
+
+
+	listen [::]:443 ssl ipv6only=on; # managed by Certbot
+	listen 443 ssl; # managed by Certbot
+	server_name  mrpikoli.ooguy.com; # managed by Certbot
+	
+	ssl_certificate /etc/letsencrypt/live/mrpikoli.ooguy.com/fullchain.pem; # managed by Certbot
+	ssl_certificate_key /etc/letsencrypt/live/mrpikoli.ooguy.com/privkey.pem; # managed by Certbot
+	include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+	ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+
+#load balancing
+location /redblue {
+
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $server_name;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Real-IP $remote_addr;
+}
+
+
+#cpu_load_status
+
+location /script/ {
+
+
+	#proxy_pass http://127.0.0.1:8082/cgi-bin;
+
+
+	root /var/www/html;
+
+    fastcgi_pass unix:/var/run/fcgiwrap.socket;
+
+    fastcgi_param SCRIPT_FILENAME /var/www/html/script/cpuload.sh;
+    fastcgi_param QUERY_STRING    $query_string;
+    fastcgi_param REQUEST_METHOD  $request_method;
+    fastcgi_param CONTENT_TYPE    $content_type;
+    fastcgi_param CONTENT_LENGTH  $content_length;
+}
+
+#cpu_html
+location /ap/
+{
+	root /var/www/html;
+	index cpu.html;
+}
+
+
+
+
+location /test2{
+        return 502;
+}
+
+
+}
+
+
+
+server {
+    if ($host = mrpikoli.ooguy.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+
+	listen 80 ;
+	listen [::]:80 ;
+    server_name mrpikoli.ooguy.com;
+    return 404; # managed by Certbot
+
+
+}
